@@ -255,7 +255,7 @@ class DataCleaner(object):
 		subset is a list of columns to look for duplicates from this specific subset . 
 		"""
 		if sum(self.data.duplicated()) == 0:
-			print  "there is no duplicated rows" 
+			print("there is no duplicated rows")
 		else: 
 			if subset:
 				dup_index = (self.data.duplicated(subset = subset)) | (self.data.duplicated(subset = subset,take_last =True)) 
@@ -320,7 +320,7 @@ class DataCleaner(object):
 		
 		max_cor = cor.max()
 		if print_mode:
-			print (max_cor.max())
+			print(max_cor.max())
 		while max_cor.max() > cutoff:            
 			A = max_cor.idxmax()
 			B = cor[A].idxmax()
@@ -336,7 +336,7 @@ class DataCleaner(object):
 			
 			max_cor = cor.max()
 			if print_mode:
-				print (max_cor.max())
+				print(max_cor.max())
 			
 		if data_frame:
 			return df.drop(res, 1)

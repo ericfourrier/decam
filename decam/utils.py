@@ -12,7 +12,8 @@ import time
 import pandas as pd 
 import numpy as np
 
-removena_numpy = lambda array: array[~(np.isnan(array))]
+def removena_numpy(array):
+    return array[~(np.isnan(array))]
 
 def common_cols(df1,df2):
     """ Return the intersection of commun columns name """
@@ -37,6 +38,8 @@ def bootstrap_ci(x,n = 300 ,ci = 0.95):
     low_per = 100*(1 - ci)/2
     high_per = 100*ci + low_per
     x = removena_numpy(x) 
+    if not len(x):
+        return (np.nan,np.nan) 
     bootstrap_samples = choice(a = x,size = (len(x),n),replace = True).mean(axis = 0)
     return np.percentile(bootstrap_samples,[low_per,high_per])
 
@@ -70,6 +73,8 @@ def create_test_df():
     test_df['character_variable'] = [str(i) for i in range(1000)]
     test_df['duplicated_column'] = test_df.id
     test_df['many_missing_70'] = [1]*300 + [np.nan] * 700
+    test_df['character_variable_fillna'] = ['A']*300 + ['B']*200 + ['C']*200 +[np.nan]*300
+    test_df['numeric_variable_fillna'] = [1]*400 + [3]*400 + [np.nan]*200
     test_df['num_variable'] = 100
     test_df['outlier'] = normal(size = 1000)
     test_df.loc[[1,10,100],'outlier'] = [10,5,10]

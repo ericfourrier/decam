@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Created on Sun March 1 2015
-
 @author: efourrier
 
 Purpose : This is a framework for Modeling with pandas, numpy and skicit-learn.
@@ -20,7 +18,14 @@ import numpy as np
 from numpy.random import permutation
 
 def cserie(serie):
-	return list(serie[serie].index)
+	return serie[serie].index.tolist()
+
+
+#########################################################
+# Import modules for the Model class 
+#########################################################
+from sklearn import cross_validation
+
 
 #########################################################
 # DataCleaner class
@@ -43,6 +48,7 @@ class DataCleaner(object):
     Parameters
     ----------
     data : a pandas dataframe
+    label : a string naming the column of the output you want predict 
 
     Examples
     --------
@@ -56,6 +62,9 @@ class DataCleaner(object):
 	def __init__(self,data):
 		assert isinstance(data, pd.DataFrame)
 		self.data = data
+		# if not self.label:
+		# 	print("""the label column is empty the data will be considered 
+		# 		as a dataset of predictors""")
 		self._nrow = len(self.data.index)
 		self._ncol= len(self.data.columns)
 		self._dfnumi = (self.data.dtypes == float)|(self.data.dtypes == int)
@@ -74,6 +83,13 @@ class DataCleaner(object):
 		self._dict_info = {}
 		self._structure = pd.DataFrame()
 		self._string_info = ""
+
+	# def get_label(self):
+	# 	""" return the Serie of label you want predict """
+	# 	if not self.label:
+	# 		print("""the label column is empty the data will be considered 
+	# 			as a dataset of predictors""")
+	# 	return self.data[self.label]
 
 	def count_unique(self):
 	    """ Return a serie with the number of unique value per columns """
@@ -111,7 +127,7 @@ class DataCleaner(object):
 	def manymissing(self,a = 0.9,row = False):
 		""" identify columns of a dataframe with many missing values ( >= a), if
 		row = True row either.
-		- the output is a pandas index """
+		- the output is a list """
 		if row:
 			self._manymissingrow = self.narowcount()
 			self._manymissingrow = cserie(self._manymissingrow['Napercentage'] >= a)
@@ -421,26 +437,84 @@ these columns contains big strings :\n{big_strings_col}\n
 	    return self.data.drop(pd.unique(col_to_remove),axis = 1)
 
 	@staticmethod
-	def fillna_serie(serie):
+	def fillna_serie(serie,special_value = None ):
+		""" fill values in a serie default with the mean for numeric or the most common 
+		factor for categorical variable """
+		
+		if special_value:
+			return serie.fillna(serie.mean())
 		if (serie.dtype ==  float) | (serie.dtype == int) :
 			return serie.fillna(serie.mean())
 		else:
-			return serie.fillna(serie.value_counts.index[0])
+			return serie.fillna(serie.value_counts().index[0])
 
-	def fill_low_na(self,columns_to_process):
+	def fill_low_na(self,columns_to_process = [],threshold = None):
 		""" this function will return a dataframe with na value replaced int 
-		the columns selected by the mean or the most common value """
-		df = self.data 
-		df[columns_to_process] = df[columns_to_process].apply(lambda x: fillna_serie(x))
+		the columns selected by the mean or the most common value
+
+		Arguments
+		---------
+		- columns_to_process : list of columns name with na values you wish to fill 
+		with the fillna_serie function 
+
+		Returns
+		--------
+		- a pandas Dataframe with the columns_to_process filled with the filledna_serie
+
+		 """
+		df = self.data
+		if threshold:
+			columns_to_process = columns_to_process + cserie(self.nacolcount().Napercentage < threshold)
+		df.loc[:,columns_to_process] = df.loc[:,columns_to_process].apply(lambda x: self.fillna_serie(x))
+		return df 
+
+	def to_dummy(self,auto = False,auto_drop = False,include_na_dummy = True,
+		subset = None,levels_limit = 30,verbose = True):
+		""" 
+		this function will transform categorical variables to numeric dummy 
+		variables so render a homogenous pandas DataFrame (only numeric variables)
+
+		Arguments
+		---------
+		- auto : False if you want to disable the automatic transformation of the 
+		factors variables, default False.
+
+		-auto_drop : True if you want to automaticely drop character variables with 
+		more levels that the levels_limit.
+
+		- include_na_dummy : False if you don't want to include a default column for
+		missing values.
+
+		- subset : if you want add your own columns to transform, list of columns 
+		name, default None.
+
+		- levels_limit : drop the variable if the character variable has too many levels,
+		default 30.
+
+		- verbose : print if there is still non numeric variables in yout output,
+		default True.
+
+		Returns 
+		--------
+		a homogenous pandas DataFrame with only numeric variables
+		"""
+		df = self.data.copy()
+		if auto:
+			col_to_transform = self.factors(nb_max_levels = levels_limit)
+			df = pd.get_dummies(df,columns = col_to_transform,dummy_na = True)
+		if subset : 
+			df = pd.get_dummies(df,columns = subset,dummy_na = True)
+		if auto_drop: 
+			df = df[(df.dtypes == float)|(df.dtypes == int)]
+		if verbose : 
+			if cserie(~((df.dtypes == float)|(df.dtypes == int))):
+				print("There are still non numeric variables {0}".format(cserie(~((df.dtypes == float)|(df.dtypes == int)))))
 		return df 
 
 	def pandas_to_ndarray(self):
 		"""
 		Converts a dataframe to a homogenous ndarray and provides a function to help convert back
 		to pandas object.
-
-		Parameters
-		----------
 
 		Returns
 		-------
@@ -449,12 +523,96 @@ these columns contains big strings :\n{big_strings_col}\n
 		    F(Xvals) = X
 		"""
 		X = self.copy()
-		return X.values, lambda Z: pd.DataFrame(Z, index=X.index, columns=X.columns)
+		return X.values, lambda arr: pd.DataFrame(arr, index=X.index, columns=X.columns)
+
+
+
+
+#########################################################
+# class Hybrid 
+#########################################################
+
+# class Hybrid(object):
+# 	def __init__(self,data):
+# 		self.data = data
+# 		self._index = self.data.index
+# 		self._column = self.data.columns
+
+# 	def as_ndarray(self):
+# 		return self.data.values
+
+# 	def as_DataFrame(self,arr):
+# 		return pd.DataFrame(self.data.index=self._index, columns=self._columns)
+
+
+
 
 
 #########################################################
 # Preprocessing and modeling class 
 #########################################################
 
+
+class Model(object):
+	""" 
+	This class is designed to help you doing predictive models and scoring with
+	skicit-learn.
+
+	Parameters
+    ----------
+    data : a homogenous numpy array without missing variables
+    test : you can specify a test set 
+    train : you can specify a train set 
+
+
+    Examples
+    --------
+    """
+
+
+	def __init__(self,my_array):
+		assert isinstance(my_array, np.my_array)
+		if np.isnan(my_array).any(): 
+			raise("The array should not have missing value")
+		self.my_array = my_array
+		self._build = None
+
+	def build(self,pct_split = None,nb_cv = None ,nb_bootstrap = None ,
+		bootstrap_pct = 0.5,loocv= None,shuffle = True):
+		""" this function will build a generator of index for the test and 
+		training set 
+
+		Arguments
+		---------
+		pct_split : the test percentage 
+		nb_cv : the number of groups for cross validation 
+		nb_bootstrap : True if you want activate bootstrap 
+		loocv : True 
+
+		Return
+		-------
+		a skicit-learn object which is a iterator with all the indexes 
+
+		"""
+		if pct_split:
+			self._build = cross_validation.ShuffleSplit(len(self.my_array),
+			 n_iter=1,test_size=pct_split)
+		if cv:
+			self._build = cross_validation.KFold(len(self.my_array), n_folds=nb_cv,
+				shuffle = shuffle)
+		if bootstrap:
+			self._build = cross_validation.Bootstrap(len(self.data),n_iter = nb_bootstrap,
+				train_size = bootstrap_pct)
+
+		if loocv:
+			self._build = cross_validation.LeaveOneOut(len(self.data))
+
+		return self._build
+
+
+		def get_train_test(self):
+			if not self._buid :
+				raise("build is empty you should choose your type of test/train splitting")
+			return [(self.data[train],self.data[test]) for train,test in self._build]
 
 

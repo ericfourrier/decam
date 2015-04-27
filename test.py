@@ -16,7 +16,7 @@ The clock decorator in utils will measure the run time of the test
 import unittest
 # internal helpers
 from decam.utils import *
-from decam.modeling_helpers import *
+from decam.modeling_helpers import DataCleaner
 import pandas as pd
 import numpy as np 
 

@@ -62,3 +62,8 @@ target/
 
 # Ipython notebook 
 *.ipynb_checkpoints
+
+# Eclipse files
+.project
+.pydevproject
+.settings/
